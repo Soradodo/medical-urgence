@@ -1,0 +1,15 @@
+# Dépendances
+node_modules/
+.next/
+out/
+
+# ⚠️ CRITIQUE : Ne JAMAIS pousser ces fichiers sur GitHub
+.env
+.env.local
+.env.production
+.env*.local
+
+# Système
+.DS_Store
+*.pem
+npm-debug.log*
