@@ -138,7 +138,12 @@ function MedicalPage({ data }) {
           <span style={styles.pulseDot} />
           ⚠️ INFORMATIONS MÉDICALES D'URGENCE
         </div>
-        <div style={styles.name}>{d.prenom} {d.nom}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6 }}>
+          {d.photoUrl && (
+            <img src={d.photoUrl} alt="Photo" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.5)', flexShrink: 0 }} />
+          )}
+          <div style={styles.name}>{d.prenom} {d.nom}</div>
+        </div>
         <div style={styles.headerMeta}>
           <span>👤 {d.age} ans</span>
           {d.groupeSanguin && <span>🩸 {d.groupeSanguin}</span>}
