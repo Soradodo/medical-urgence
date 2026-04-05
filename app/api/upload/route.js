@@ -1,3 +1,8 @@
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 import { NextResponse } from 'next/server';
 import { checkAdminPassword } from '@/lib/utils';
 
@@ -30,4 +35,5 @@ export async function POST(request) {
   const dataUrl = `data:${file.type};base64,${base64}`;
 
   return NextResponse.json({ url: dataUrl });
+  export const runtime = 'nodejs';
 }
