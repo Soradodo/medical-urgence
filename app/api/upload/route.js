@@ -1,34 +1,38 @@
 export const runtime = 'nodejs';
-import { NextResponse } from 'next/server';
+
 import { checkAdminPassword } from '@/lib/utils';
 
 export async function POST(request) {
   const url = new URL(request.url);
   const isAdmin = url.searchParams.get('admin') === '1';
-  const password = request.headers.get('x-admin-password');
 
-  if (isAdmin && !checkAdminPassword(password)) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  if (isAdmin) {
+    const adminPassword = request.headers.get('x-admin-password');
+    if (!checkAdminPassword(adminPassword)) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
-  const formData = await request.formData();
-  const file = formData.get('photo');
-
-  if (!file || typeof file === 'string') {
-    return NextResponse.json({ error: 'Aucun fichier' }, { status: 400 });
+  let formData;
+  try {
+    formData = await request.formData();
+  } catch (err) {
+    console.error('formData() error:', err.message);
+    return Response.json({ error: err.message }, { status: 400 });
   }
 
-  if (!file.type.startsWith('image/')) {
-    return NextResponse.json({ error: 'Le fichier doit être une image' }, { status: 400 });
+  const file = formData.get('file');
+  console.log('File received:', file ? `${file.name} (${file.size} bytes)` : 'NULL');
+
+  if (!file) {
+    return Response.json({ error: 'No file in formData' }, { status: 400 });
   }
 
-  if (file.size > 1 * 1024 * 1024) {
-    return NextResponse.json({ error: 'Image trop lourde (max 1 MB)' }, { status: 400 });
-  }
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const base64 = buffer.toString('base64');
+  const mimeType = file.type || 'image/jpeg';
+  const dataUrl = `data:${mimeType};base64,${base64}`;
 
-  const buffer = await file.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString('base64');
-  const dataUrl = `data:${file.type};base64,${base64}`;
-
-  return NextResponse.json({ url: dataUrl });
+  return Response.json({ url: dataUrl });
 }
