@@ -21,7 +21,7 @@ export async function POST(request) {
     return Response.json({ error: err.message }, { status: 400 });
   }
 
-  const file = formData.get('file');
+  const file = formData.get('photo');
   console.log('File received:', file ? `${file.name} (${file.size} bytes)` : 'NULL');
 
   if (!file) {
