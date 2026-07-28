@@ -127,6 +127,26 @@ export default function AdminPage() {
     await fetch('/api/admin', { method: 'POST', headers: { 'x-admin-password': password, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggle', id, actif }) });
     loadFiches();
   }
+  async function copyLink(token) {
+    const link = `${window.location.origin}/u/${token}`;
+    navigator.clipboard.writeText(link);
+    setMsg({ type: 'success', text: 'Lien copié !' });
+  }
+
+  async function resetPin(id, prenom, nom) {
+    if (!confirm(`Générer un nouveau PIN pour ${prenom} ${nom} ? L'ancien PIN ne fonctionnera plus.`)) return;
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'x-admin-password': password, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset_pin', id }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      setMsg({ type: 'success', text: `Nouveau PIN pour ${prenom} ${nom} : ${d.newPin} — note-le maintenant, il ne sera plus affiché.` });
+    } else {
+      setMsg({ type: 'error', text: 'Erreur lors de la réinitialisation' });
+    }
+  }
 
   async function remove(id) {
     if (!confirm('Supprimer cette fiche définitivement ?')) return;
@@ -216,6 +236,8 @@ export default function AdminPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <span style={S.badge(f.actif)}>{f.actif ? 'Active' : 'Désactivée'}</span>
+                    <button onClick={() => copyLink(f.token)} style={S.btnSm('#2874A6')}>🔗 Copier lien</button>
+                    <button onClick={() => resetPin(f.id, f.prenom, f.nom)} style={S.btnSm('#B7791F')}>🔄 Nouveau PIN</button>
                     <button onClick={() => loadEdit(f.id)} style={S.btnSm('#333')}>✏️ Modifier</button>
                     <button onClick={() => toggle(f.id, !f.actif)} style={S.btnSm(f.actif ? '#888' : '#1B7F45')}>{f.actif ? 'Désactiver' : 'Réactiver'}</button>
                     <button onClick={() => remove(f.id)} style={S.btnSm('#C0392B')}>🗑️</button>

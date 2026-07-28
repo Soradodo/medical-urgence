@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllFiches, getFicheById, createFiche, updateFiche, toggleFiche, deleteFiche } from '@/lib/db';
+import { getAllFiches, getFicheById, createFiche, updateFiche, toggleFiche, deleteFiche, resetFichePin } from '@/lib/db';
 import { generateToken, generatePin, checkAdminPassword } from '@/lib/utils';
 
 function unauthorized() {
@@ -25,7 +25,11 @@ export async function GET(request) {
     if (!fiche) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
     return NextResponse.json({ fiche });
   }
-
+if (action === 'reset_pin') {
+    const newPin = generatePin();
+    await resetFichePin(id, newPin);
+    return NextResponse.json({ newPin });
+  }
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
 }
 
@@ -58,6 +62,10 @@ export async function POST(request) {
     await deleteFiche(id);
     return NextResponse.json({ ok: true });
   }
-
+if (action === 'reset_pin') {
+    const newPin = generatePin();
+    await resetFichePin(id, newPin);
+    return NextResponse.json({ newPin });
+  }
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
 }
