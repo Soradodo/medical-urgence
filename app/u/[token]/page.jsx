@@ -57,7 +57,7 @@ export default function UrgencePage() {
   if (state === 'error') return <ErrorPage />;
   if (state === 'expired') return <ExpiredPage />;
   if (state === 'pin') return <PinPage pin={pin} setPin={setPin} onSubmit={submitPin} error={pinError} />;
-  if (state === 'granted') return <MedicalPage data={data} />;
+  if (state === 'granted') return <MedicalPage data={data} token={token} />;
   return null;
 }
 
@@ -128,8 +128,9 @@ function ExpiredPage() {
 }
 
 // ── MAIN MEDICAL PAGE ────────────────────────────────────
-function MedicalPage({ data }) {
+function MedicalPage({ data, token }) {
   const d = data;
+  const [showPinForm, setShowPinForm] = useState(false);
   return (
     <div style={styles.page}>
       {/* HEADER */}
@@ -252,8 +253,69 @@ function MedicalPage({ data }) {
 
       <footer style={styles.footer}>
         Informations fournies volontairement par la personne concernée.<br />
-        <a href="#" style={{ color: '#AAAAAA' }}>Gérer mes données · Confidentialité</a>
+        <button onClick={() => setShowPinForm(true)} style={styles.linkBtn}>🔑 Changer mon code PIN</button>
       </footer>
+
+      {showPinForm && <ChangePinModal token={token} onClose={() => setShowPinForm(false)} />}
+    </div>
+  );
+}
+
+// ── CHANGE PIN MODAL ─────────────────────────────────────
+function ChangePinModal({ token, onClose }) {
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [msg, setMsg] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    setMsg(null);
+    if (newPin.length !== 4) return setMsg({ type: 'error', text: 'Le nouveau PIN doit contenir 4 chiffres.' });
+    if (newPin !== confirmPin) return setMsg({ type: 'error', text: 'Les deux nouveaux PIN ne correspondent pas.' });
+    if (['0000', '1234', '1111', '0123'].includes(newPin)) return setMsg({ type: 'error', text: 'Ce PIN est trop simple, choisis-en un autre.' });
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, currentPin, newPin }),
+      });
+      const json = await res.json();
+      if (json.status === 'ok') {
+        setMsg({ type: 'success', text: 'PIN mis à jour avec succès !' });
+        setTimeout(onClose, 1500);
+      } else if (json.status === 'wrong_pin') {
+        setMsg({ type: 'error', text: 'PIN actuel incorrect.' });
+      } else {
+        setMsg({ type: 'error', text: 'Erreur, réessaie plus tard.' });
+      }
+    } catch {
+      setMsg({ type: 'error', text: 'Erreur, réessaie plus tard.' });
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>🔑 Changer mon PIN</h2>
+        {msg && <div style={msg.type === 'success' ? styles.modalSuccess : styles.modalError}>{msg.text}</div>}
+        <input type="tel" inputMode="numeric" maxLength={4} placeholder="PIN actuel"
+          value={currentPin} onChange={e => setCurrentPin(e.target.value.replace(/\D/g, ''))}
+          style={styles.modalInput} />
+        <input type="tel" inputMode="numeric" maxLength={4} placeholder="Nouveau PIN"
+          value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+          style={styles.modalInput} />
+        <input type="tel" inputMode="numeric" maxLength={4} placeholder="Confirmer le nouveau PIN"
+          value={confirmPin} onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+          style={styles.modalInput} />
+        <button onClick={submit} disabled={loading} style={styles.pinBtn}>
+          {loading ? 'Envoi...' : 'Valider'}
+        </button>
+        <button onClick={onClose} style={styles.modalCancel}>Annuler</button>
+      </div>
     </div>
   );
 }
@@ -304,4 +366,11 @@ const styles = {
   pinError: { color: '#C0392B', fontSize: 13, fontWeight: 600, marginBottom: 12 },
   pinBtn: { width: '100%', background: '#C0392B', color: '#fff', border: 'none', borderRadius: 12, padding: '16px', fontSize: 17, fontWeight: 800, cursor: 'pointer', marginTop: 8 },
   pinHint: { fontSize: 11, color: '#AAAAAA', marginTop: 20, lineHeight: 1.6 },
+  linkBtn: { background: 'none', border: 'none', color: '#888', fontSize: 12, textDecoration: 'underline', cursor: 'pointer', marginTop: 4, fontFamily: 'inherit' },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 200 },
+  modalCard: { background: '#fff', borderRadius: 18, padding: '28px 24px', maxWidth: 340, width: '100%' },
+  modalInput: { width: '100%', border: '2px solid #DDD', borderRadius: 10, padding: '12px 14px', fontSize: 16, textAlign: 'center', letterSpacing: '0.2em', fontWeight: 700, outline: 'none', marginBottom: 10, fontFamily: 'inherit' },
+  modalSuccess: { background: '#E8F5EE', color: '#1B7F45', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, fontWeight: 600 },
+  modalError: { background: '#FDECEA', color: '#96281B', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, fontWeight: 600 },
+  modalCancel: { width: '100%', background: 'none', border: 'none', color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 10, padding: 8 },
 };

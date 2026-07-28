@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
-import { getFicheByToken, parseFiche } from '@/lib/db';
+import { getFicheByToken, parseFiche, resetFichePin } from '@/lib/db';
 
 // ─── Rate limiting en mémoire
 const rateMap = new Map();
@@ -87,4 +87,37 @@ export async function GET(request) {
     { status: 'ok', data: parseFiche(fiche) },
     { status: 200, headers: secHeaders }
   );
+}
+// ─── Changer son propre PIN (le patient doit connaître l'ancien)
+export async function POST(request) {
+  const body = await request.json();
+  const { token, currentPin, newPin } = body;
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+
+  const secHeaders = {
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+  };
+
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ status: 'invalid' }, { status: 429, headers: secHeaders });
+  }
+
+  if (!/^\d{4}$/.test(newPin || '')) {
+    return NextResponse.json({ status: 'invalid_format' }, { status: 400, headers: secHeaders });
+  }
+
+  const fiche = await getFicheByToken(token);
+  if (!fiche) {
+    return NextResponse.json({ status: 'invalid' }, { status: 404, headers: secHeaders });
+  }
+
+  if (!bcrypt.compareSync(currentPin, fiche.pin)) {
+    return NextResponse.json({ status: 'wrong_pin' }, { status: 401, headers: secHeaders });
+  }
+
+  await resetFichePin(fiche.id, newPin);
+
+  return NextResponse.json({ status: 'ok' }, { status: 200, headers: secHeaders });
 }
