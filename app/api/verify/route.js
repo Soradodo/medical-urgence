@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
 import { getFicheByToken, parseFiche } from '@/lib/db';
 
@@ -76,7 +77,7 @@ export async function GET(request) {
   if (!pin) {
     return NextResponse.json({ status: 'pin_required' }, { status: 200, headers: secHeaders });
   }
-  if (pin !== fiche.pin) {
+  if (!bcrypt.compareSync(pin, fiche.pin)) {
     return NextResponse.json({ status: 'wrong_pin' }, { status: 401, headers: secHeaders });
   }
 
