@@ -58,6 +58,7 @@ export default function AdminPage() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileRef = useRef();
+  const [trash, setTrash] = useState([]);
 
   useEffect(() => {
     if (!search.trim()) { setFiltered(fiches); return; }
@@ -147,7 +148,24 @@ export default function AdminPage() {
       setMsg({ type: 'error', text: 'Erreur lors de la réinitialisation' });
     }
   }
+async function loadTrash() {
+    const res = await fetch('/api/admin?action=trash', { headers: { 'x-admin-password': password } });
+    const d = await res.json();
+    setTrash(d.deleted || []);
+    setView('trash');
+  }
 
+  async function restore(id) {
+    await fetch('/api/admin', { method: 'POST', headers: { 'x-admin-password': password, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'restore', id }) });
+    loadTrash();
+    loadFiches();
+  }
+
+  async function permanentDelete(id) {
+    if (!confirm('Supprimer DÉFINITIVEMENT cette fiche ? Cette action est irréversible.')) return;
+    await fetch('/api/admin', { method: 'POST', headers: { 'x-admin-password': password, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'permanent_delete', id }) });
+    loadTrash();
+  }
   async function remove(id) {
     if (!confirm('Supprimer cette fiche définitivement ?')) return;
     await fetch('/api/admin', { method: 'POST', headers: { 'x-admin-password': password, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id }) });
@@ -173,10 +191,11 @@ export default function AdminPage() {
 
   return (
     <div style={S.wrap}>
-      <header style={S.header}>
+   <header style={S.header}>
         <h1 style={S.headerTitle}>🏥 Admin — Fiches médicales</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           {view !== 'list' && <button onClick={resetForm} style={S.btnSm('#555')}>← Liste</button>}
+          {view === 'list' && <button onClick={loadTrash} style={S.btnSm('#888')}>🗑️ Corbeille</button>}
           {view === 'list' && <button onClick={() => { setView('create'); setForm({}); setMsg(null); setNewFiche(null); setPhotoPreview(null); }} style={S.btnSm('#1B7F45')}>+ Nouvelle fiche</button>}
         </div>
       </header>
@@ -247,7 +266,34 @@ export default function AdminPage() {
             ))}
           </>
         )}
-
+{view === 'trash' && (
+          <>
+            <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>
+              {trash.length} fiche(s) dans la corbeille
+            </div>
+            {trash.length === 0 && (
+              <div style={{ ...S.card, textAlign: 'center', color: '#888', padding: 40 }}>
+                La corbeille est vide.
+              </div>
+            )}
+            {trash.map(f => (
+              <div key={f.id} style={S.card}>
+                <div style={S.row}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 17 }}>{f.prenom} {f.nom}</div>
+                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                      Supprimée le {new Date(f.supprime_le).toLocaleDateString('fr-FR')}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => restore(f.id)} style={S.btnSm('#1B7F45')}>↩️ Restaurer</button>
+                    <button onClick={() => permanentDelete(f.id)} style={S.btnSm('#C0392B')}>🗑️ Supprimer définitivement</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
         {(view === 'create' || view === 'edit') && (
           <div style={S.card}>
             <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>
