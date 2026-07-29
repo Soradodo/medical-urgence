@@ -59,6 +59,7 @@ export default function AdminPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileRef = useRef();
   const [trash, setTrash] = useState([]);
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
 
   useEffect(() => {
     if (!search.trim()) { setFiltered(fiches); return; }
@@ -69,6 +70,43 @@ export default function AdminPage() {
       f.contact_tel?.toLowerCase().includes(q)
     ));
   }, [search, fiches]);
+  useEffect(() => {
+    if (!authed) return;
+
+    const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes
+    const WARNING_BEFORE = 60 * 1000; // avertir 1 min avant
+
+    let lastActivity = Date.now();
+    let warningShown = false;
+
+    function resetActivity() {
+      lastActivity = Date.now();
+      warningShown = false;
+      setShowTimeoutWarning(false);
+    }
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetActivity));
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastActivity;
+      if (elapsed >= INACTIVITY_LIMIT) {
+        setAuthed(false);
+        setPassword('');
+        setFiches([]);
+        setFiltered([]);
+        setMsg({ type: 'error', text: 'Session expirée pour inactivité. Reconnecte-toi.' });
+      } else if (elapsed >= INACTIVITY_LIMIT - WARNING_BEFORE && !warningShown) {
+        warningShown = true;
+        setShowTimeoutWarning(true);
+      }
+    }, 5000);
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetActivity));
+      clearInterval(interval);
+    };
+  }, [authed]);
 
   async function login() {
     const res = await fetch('/api/admin?action=list', { headers: { 'x-admin-password': password } });
@@ -201,8 +239,13 @@ async function loadTrash() {
       </header>
 
       <main style={S.main}>
+        {showTimeoutWarning && (
+          <div style={{ background: '#FFF3CD', color: '#856404', borderRadius: 10, padding: '14px 16px', marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
+            ⏱️ Ta session va expirer dans moins d'une minute par inactivité. Clique n'importe où pour rester connectée.
+          </div>
+        )}
         {msg && <div style={msg.type === 'success' ? S.success : S.error}>{msg.text}</div>}
-
+        
         {newFiche && (
           <div style={{ background: '#E8F5EE', borderRadius: 14, padding: 20, marginBottom: 16 }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: '#1B7F45', marginBottom: 12 }}>✅ Fiche créée — informations à transmettre</div>
