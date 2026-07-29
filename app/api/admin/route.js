@@ -6,8 +6,35 @@ function unauthorized() {
   return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 }
 
+// ─── Rate limiting en mémoire (protection contre le brute-force du mot de passe admin)
+const rateMap = new Map();
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const max = 10; // max 10 tentatives par 15 min par IP
+
+  const entry = rateMap.get(ip) || { count: 0, start: now };
+  if (now - entry.start > windowMs) {
+    rateMap.set(ip, { count: 1, start: now });
+    return true;
+  }
+  entry.count++;
+  rateMap.set(ip, entry);
+  return entry.count <= max;
+}
+
+function getIP(request) {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+}
+
 // GET /api/admin?action=list ou ?action=get&id=X
 export async function GET(request) {
+  const ip = getIP(request);
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: 'Trop de tentatives, réessaie plus tard' }, { status: 429 });
+  }
+
   const { searchParams } = new URL(request.url);
   const password = request.headers.get('x-admin-password');
   if (!checkAdminPassword(password)) return unauthorized();
@@ -25,16 +52,17 @@ export async function GET(request) {
     if (!fiche) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
     return NextResponse.json({ fiche });
   }
-if (action === 'reset_pin') {
-    const newPin = generatePin();
-    await resetFichePin(id, newPin);
-    return NextResponse.json({ newPin });
-  }
+
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
 }
 
 // POST /api/admin — créer ou modifier une fiche
 export async function POST(request) {
+  const ip = getIP(request);
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: 'Trop de tentatives, réessaie plus tard' }, { status: 429 });
+  }
+
   const password = request.headers.get('x-admin-password');
   if (!checkAdminPassword(password)) return unauthorized();
 
@@ -62,10 +90,12 @@ export async function POST(request) {
     await deleteFiche(id);
     return NextResponse.json({ ok: true });
   }
-if (action === 'reset_pin') {
+
+  if (action === 'reset_pin') {
     const newPin = generatePin();
     await resetFichePin(id, newPin);
     return NextResponse.json({ newPin });
   }
+
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
 }
