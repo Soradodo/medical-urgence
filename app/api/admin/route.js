@@ -12,8 +12,7 @@ const rateMap = new Map();
 function checkRateLimit(ip) {
   const now = Date.now();
   const windowMs = 15 * 60 * 1000; // 15 minutes
-  const max = 10; // max 10 tentatives par 15 min par IP
-
+  const max = 50; // max 50 tentatives par 15 min par IP
   const entry = rateMap.get(ip) || { count: 0, start: now };
   if (now - entry.start > windowMs) {
     rateMap.set(ip, { count: 1, start: now });
