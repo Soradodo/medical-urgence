@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllFiches, getFicheById, createFiche, updateFiche, toggleFiche, deleteFiche, resetFichePin } from '@/lib/db';
+import { getAllFiches, getFicheById, createFiche, updateFiche, toggleFiche, deleteFiche, resetFichePin, getDeletedFiches, restoreFiche, permanentlyDeleteFiche } from '@/lib/db';
 import { generateToken, generatePin, checkAdminPassword } from '@/lib/utils';
 
 function unauthorized() {
@@ -52,7 +52,10 @@ export async function GET(request) {
     if (!fiche) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
     return NextResponse.json({ fiche });
   }
-
+if (action === 'trash') {
+    const deleted = await getDeletedFiches();
+    return NextResponse.json({ deleted });
+  }
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
 }
 
@@ -96,6 +99,14 @@ export async function POST(request) {
     await resetFichePin(id, newPin);
     return NextResponse.json({ newPin });
   }
+if (action === 'restore') {
+    await restoreFiche(id);
+    return NextResponse.json({ ok: true });
+  }
 
+  if (action === 'permanent_delete') {
+    await permanentlyDeleteFiche(id);
+    return NextResponse.json({ ok: true });
+  }
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
 }
