@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getAllFiches, getFicheById, createFiche, updateFiche, toggleFiche, deleteFiche, resetFichePin, getDeletedFiches, restoreFiche, permanentlyDeleteFiche } from '@/lib/db';
 import { generateToken, generatePin, checkAdminPassword } from '@/lib/utils';
+import { getAllFiches, getFicheById, createFiche, updateFiche, toggleFiche, deleteFiche, resetFichePin, getDeletedFiches, restoreFiche, permanentlyDeleteFiche, createBlankFiche } from '@/lib/db';
 
 function unauthorized() {
   return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
@@ -106,6 +106,11 @@ if (action === 'restore') {
   if (action === 'permanent_delete') {
     await permanentlyDeleteFiche(id);
     return NextResponse.json({ ok: true });
+  }
+  if (action === 'create_blank') {
+    const token = generateToken();
+    await createBlankFiche(token);
+    return NextResponse.json({ token, claimLink: `/claim/${token}` });
   }
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
 }
