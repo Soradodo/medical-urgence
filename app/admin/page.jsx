@@ -186,6 +186,21 @@ export default function AdminPage() {
       setMsg({ type: 'error', text: 'Erreur lors de la réinitialisation' });
     }
   }
+  async function createBlank() {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'x-admin-password': password, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_blank' }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      const fullLink = `${window.location.origin}${d.claimLink}`;
+      navigator.clipboard.writeText(fullLink);
+      setMsg({ type: 'success', text: `Lien vierge créé et copié : ${fullLink}` });
+    } else {
+      setMsg({ type: 'error', text: 'Erreur lors de la création' });
+    }
+  }
 async function loadTrash() {
     const res = await fetch('/api/admin?action=trash', { headers: { 'x-admin-password': password } });
     const d = await res.json();
@@ -233,6 +248,7 @@ async function loadTrash() {
         <h1 style={S.headerTitle}>🏥 Admin — Fiches médicales</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           {view !== 'list' && <button onClick={resetForm} style={S.btnSm('#555')}>← Liste</button>}
+          {view === 'list' && <button onClick={createBlank} style={S.btnSm('#2874A6')}>🏷️ Lien vierge (NFC)</button>}
           {view === 'list' && <button onClick={loadTrash} style={S.btnSm('#888')}>🗑️ Corbeille</button>}
           {view === 'list' && <button onClick={() => { setView('create'); setForm({}); setMsg(null); setNewFiche(null); setPhotoPreview(null); }} style={S.btnSm('#1B7F45')}>+ Nouvelle fiche</button>}
         </div>
@@ -245,7 +261,7 @@ async function loadTrash() {
           </div>
         )}
         {msg && <div style={msg.type === 'success' ? S.success : S.error}>{msg.text}</div>}
-        
+
         {newFiche && (
           <div style={{ background: '#E8F5EE', borderRadius: 14, padding: 20, marginBottom: 16 }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: '#1B7F45', marginBottom: 12 }}>✅ Fiche créée — informations à transmettre</div>
